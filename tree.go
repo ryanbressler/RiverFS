@@ -30,6 +30,11 @@ func (n *Node) Attr() fuse.Attr {
 	return fuse.Attr{Mode: n.Mode}
 }
 
+func (n *Node) Setattr(req *fuse.SetattrRequest, resp *fuse.SetattrResponse, intr fs.Intr) fuse.Error {
+	n.Mode = req.Mode
+	return nil
+}
+
 type Dir struct {
 	Node
 	rwmut    sync.RWMutex
@@ -39,25 +44,90 @@ type Dir struct {
 func NewDir() (d *Dir) {
 	d = &Dir{}
 	d.Node = Node{}
-	d.Mode = os.ModeDir | 0555
+	d.Mode = os.ModeDir
 	d.Children = make(map[string]fs.Node)
 	return
+}
+
+func (d *Dir) Add(name string, n fs.Node) {
+	//TODO: consensous
+	//TODO: Check if exists and error
+	d.rwmut.Lock()
+	d.Children[name] = n
+	d.rwmut.Unlock()
+
+}
+
+func (d *Dir) Rm(name string) {
+	//TODO: consensous
+	//TODO: Check if exists and error
+	//TODO: clean up disk space
+	d.rwmut.Lock()
+	delete(d.Children, name)
+	d.rwmut.Unlock()
+
 }
 
 func (d *Dir) Mkdir(req *fuse.MkdirRequest, intr fs.Intr) (n fs.Node, ferr fuse.Error) {
 	ndir := NewDir()
 	ndir.Name = req.Name
-
-	//TODO: consensous
-	//TODO: Check if exists and error
-
-	d.rwmut.Lock()
-	d.Children[req.Name] = ndir
-	d.rwmut.Unlock()
-
+	ndir.Mode = req.Mode
+	d.Add(req.Name, ndir)
 	return ndir, nil
 
 }
+
+func (d *Dir) Remove(req *fuse.RemoveRequest, intr fs.Intr) fuse.Error {
+	d.Rm(req.Name)
+	return nil
+}
+
+func (d *Dir) Rename(req *fuse.RenameRequest, newDir fs.Node, intr fs.Intr) fuse.Error {
+
+	d.rwmut.RLock()
+	node, ok := d.Children[req.OldName]
+	d.rwmut.RUnlock()
+	if !ok {
+		return fuse.ENOENT
+	}
+	d.Rm(req.OldName)
+
+	switch node.(type) {
+	case *Dir:
+		node.(*Dir).Name = req.NewName
+	case *File:
+		node.(*File).Name = req.NewName
+	}
+
+	newDir.(*Dir).Add(req.NewName, node)
+
+	return nil
+
+}
+
+func (d *Dir) Create(req *fuse.CreateRequest, resp *fuse.CreateResponse, intr fs.Intr) (fs.Node, fs.Handle, fuse.Error) {
+
+	n := &File{}
+	n.Mode = req.Mode
+	n.Name = req.Name
+	d.Add(req.Name, n)
+	return n, n, nil
+}
+
+// func (d *Dir) Mknod(req *fuse.MknodRequest, intr fs.Intr) (n fs.Node, ferr fuse.Error) {
+// 	switch {
+// 	case req.Mode.IsDir():
+// 		n = NewDir()
+// 	case req.Mode.IsRegular():
+// 		n = &File{}
+// 	default:
+// 		return n, fuse.ENOSYS
+// 	}
+// 	n.(*Node).Mode = req.Mode
+// 	n.(*Node).Name = req.Name
+// 	d.Add(req.Name, n)
+// 	return
+// }
 
 func (d *Dir) Lookup(name string, intr fs.Intr) (fs fs.Node, err fuse.Error) {
 	d.rwmut.RLock()
@@ -89,18 +159,15 @@ func (d *Dir) ReadDir(intr fs.Intr) ([]fuse.Dirent, fuse.Error) {
 	return out, nil
 }
 
-type Chunk struct {
-	Host string
-	Path string
-}
-
 type File struct {
 	Node
-	Chunks []Chunk
 }
 
 func (f *File) ReadAll(intr fs.Intr) (out []byte, ferr fuse.Error) {
 	//Place holder code
-	out = make([]byte, 0)
-	return out, ferr
+	return []byte("I AM A FILE!!!!11!!!\n"), ferr
+}
+
+func (f *File) WriteAll(in []byte, intr fs.Intr) fuse.Error {
+	return nil
 }
