@@ -50,7 +50,7 @@ func main() {
 
 	flag.Parse()
 
-	RiverFS.FuseMount(mountpoint)
 	//RiverFS.StartRaftServer(me, raftlog, lead, peers)
+	RiverFS.FuseMount(mountpoint)
 
 }

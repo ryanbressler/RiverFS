@@ -3,6 +3,7 @@ package RiverFS
 import (
 	"github.com/goraft/raft"
 	"log"
+	"net/http"
 )
 
 type StateMachine struct{}
@@ -16,14 +17,26 @@ func (s *StateMachine) Recovery(bs []byte) error {
 }
 
 func StartRaftServer(me string, path string, lead bool, peers []string) {
+	log.Println("start raft")
 
 	transporter := raft.NewHTTPTransporter("raft")
 
-	server, err := raft.NewServer(me, path, transporter, &StateMachine{}, nil)
+	raftserver, err := raft.NewServer(me, path, transporter, &StateMachine{}, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	server.Start()
+	mux := http.NewServeMux()
+
+	httpserver := &http.Server{
+		Handler: mux,
+		Addr:    me,
+	}
+
+	transporter.Install(raftserver, mux)
+
+	//raftserver.Start()
+	log.Println("listen and serve")
+	httpserver.ListenAndServe()
 
 }
