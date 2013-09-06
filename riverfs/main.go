@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"github.com/ryanbressler/RiverFS"
+	"io"
+	"log"
+	"os"
 )
 
 func main() {
@@ -17,6 +21,9 @@ func main() {
 
 	var peerlist string
 	flag.StringVar(&peerlist, "peers", "", "Text file to load peers from.")
+
+	var lead bool
+	flag.BoolVar(&lead, "lead", false, "Start as leader.")
 
 	peers := make([]string, 10)
 	if peerlist != "" {
@@ -44,5 +51,6 @@ func main() {
 	flag.Parse()
 
 	RiverFS.FuseMount(mountpoint)
+	//RiverFS.StartRaftServer(me, raftlog, lead, peers)
 
 }
