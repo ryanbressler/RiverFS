@@ -17,7 +17,7 @@ Todo
 -------
 Synchronize dir tree state across nodes via raft
 
-Reads and write file data via http (or?).
+Read, Write and Stream file data via http (or?).
 
 
 
