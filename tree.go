@@ -4,49 +4,64 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	//"github.com/goraft/raft"
-	"io/ioutil"
-	"log"
 	"os"
-	"path/filepath"
 	"sync"
-	"syscall"
 )
 
 type RootDir struct {
-	Root Dir
+	Dir *Dir
 }
 
 func NewRootDir() (r *RootDir) {
-	r = &RootDir{
-		Root: Dir{
-			Node{Name: "",
-				Attr: fuse.Attr{}},
-			Children: make(map[string]Node)}}
+	r = &RootDir{Dir: NewDir()}
+	return
 }
 
-func (nf TargetDir) Root() (fs.Node, fuse.Error) {
-	return Root, nil
+func (nf *RootDir) Root() (fs.Node, fuse.Error) {
+	return nf.Dir, nil
 }
 
 type Node struct {
 	Name string
-	Attr fuse.Attr
+	Mode os.FileMode
 }
 
-func (n Node) Attr() fuse.Attr {
-
-	return n.Attr
+func (n *Node) Attr() fuse.Attr {
+	return fuse.Attr{Mode: n.Mode}
 }
 
 type Dir struct {
 	Node
 	rwmut    sync.RWMutex
-	Children map[string]Node
+	Children map[string]fs.Node
 }
 
-func (d Dir) Lookup(name string, intr fs.Intr) (fs fs.Node, err fuse.Error) {
+func NewDir() (d *Dir) {
+	d = &Dir{}
+	d.Node = Node{}
+	d.Mode = os.ModeDir | 0555
+	d.Children = make(map[string]fs.Node)
+	return
+}
+
+func (d *Dir) Mkdir(req *fuse.MkdirRequest, intr fs.Intr) (n fs.Node, ferr fuse.Error) {
+	ndir := NewDir()
+	ndir.Name = req.Name
+
+	//TODO: consensous
+	//TODO: Check if exists and error
+
+	d.rwmut.Lock()
+	d.Children[req.Name] = ndir
+	d.rwmut.Unlock()
+
+	return ndir, nil
+
+}
+
+func (d *Dir) Lookup(name string, intr fs.Intr) (fs fs.Node, err fuse.Error) {
 	d.rwmut.RLock()
-	node, ok := d.Children[name]
+	fs, ok := d.Children[name]
 	d.rwmut.RUnlock()
 	if !ok {
 		return nil, fuse.ENOENT
@@ -55,16 +70,16 @@ func (d Dir) Lookup(name string, intr fs.Intr) (fs fs.Node, err fuse.Error) {
 	return
 }
 
-func (d Dir) ReadDir(intr fs.Intr) ([]fuse.Dirent, fuse.Error) {
+func (d *Dir) ReadDir(intr fs.Intr) ([]fuse.Dirent, fuse.Error) {
 	var out []fuse.Dirent
 
 	d.rwmut.RLock()
 	for name, node := range d.Children {
 		de := fuse.Dirent{Name: name}
 		switch node.(type) {
-		case Dir:
+		case *Dir:
 			de.Type = fuse.DT_Dir
-		case File:
+		case *File:
 			de.Type = fuse.DT_Dir
 		}
 		out = append(out, de)
@@ -84,16 +99,8 @@ type File struct {
 	Chunks []Chunk
 }
 
-func (f File) ReadAll(intr fs.Intr) ([]byte, fuse.Error) {
-	//Place holder code ...not effichent and only supports single machine.
-	out = ""
-	ferr = nil
-	for _, c := range f.Chunks {
-		contents, err := ioutil.ReadFile(c.Path)
-		if err {
-			ferr = fuse.EIO
-		}
-		out += contents
-	}
+func (f *File) ReadAll(intr fs.Intr) (out []byte, ferr fuse.Error) {
+	//Place holder code
+	out = make([]byte, 0)
 	return out, ferr
 }
