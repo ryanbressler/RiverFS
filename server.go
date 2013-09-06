@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func ServeDir(mountpoint string) {
+func FuseMount(mountpoint string) {
 
 	c, err := fuse.Mount(mountpoint)
 	if err != nil {
