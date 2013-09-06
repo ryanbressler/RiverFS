@@ -1,14 +1,23 @@
 RiverFS
 =======
 
-Distributed FUSE+Raft filesystem in Go (golang).
+Goal: fuse mounted distributed filesystem in Go (golang).
 
 This is still experimental and doesn't work yet.
 
-Goals
+Things that are done
+----------------------
+In memory directory tree structer mounted via fuse supporting:
+
+ls, rm, mkdir, touch, cd, mv, cp
+
+Place holder file code that ignores file contents.
+
+Todo
 -------
-Mounts via FUSE as a normall looking file directory.
-Files are stored as normal files accross a cluster.
-Directory tree stucture is stored in memory on each node and
-kept in consensous via raft.
-Effichent streaming of large files.
+Synchronize dir tree state across nodes via raft
+
+Reads and write file data via http (or?).
+
+
+
