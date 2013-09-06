@@ -13,25 +13,29 @@ import (
 )
 
 type RootDir struct {
-	root Dir
+	Root Dir
+}
+
+func NewRootDir() (r *RootDir) {
+	r = &RootDir{
+		Root: Dir{
+			Node{Name: "",
+				Attr: fuse.Attr{}},
+			Children: make(map[string]Node)}}
 }
 
 func (nf TargetDir) Root() (fs.Node, fuse.Error) {
-	return root, nil
+	return Root, nil
 }
 
 type Node struct {
 	Name string
+	Attr fuse.Attr
 }
 
 func (n Node) Attr() fuse.Attr {
-	s, err := os.Stat(n.Path)
-	if err != nil {
-		log.Print(err)
-		return fuse.Attr{}
-	}
 
-	return fuse.Attr{Size: uint64(s.Size()), Mtime: s.ModTime(), Mode: s.Mode()}
+	return n.Attr
 }
 
 type Dir struct {
@@ -70,13 +74,26 @@ func (d Dir) ReadDir(intr fs.Intr) ([]fuse.Dirent, fuse.Error) {
 	return out, nil
 }
 
-type File struct {
-	Node
+type Chunk struct {
 	Host string
 	Path string
 }
 
+type File struct {
+	Node
+	Chunks []Chunk
+}
+
 func (f File) ReadAll(intr fs.Intr) ([]byte, fuse.Error) {
-	contents, err := ioutil.ReadFile(Path)
-	return contents, err
+	//Place holder code ...not effichent and only supports single machine.
+	out = ""
+	ferr = nil
+	for _, c := range f.Chunks {
+		contents, err := ioutil.ReadFile(c.Path)
+		if err {
+			ferr = fuse.EIO
+		}
+		out += contents
+	}
+	return out, ferr
 }
