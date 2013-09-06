@@ -114,21 +114,6 @@ func (d *Dir) Create(req *fuse.CreateRequest, resp *fuse.CreateResponse, intr fs
 	return n, n, nil
 }
 
-// func (d *Dir) Mknod(req *fuse.MknodRequest, intr fs.Intr) (n fs.Node, ferr fuse.Error) {
-// 	switch {
-// 	case req.Mode.IsDir():
-// 		n = NewDir()
-// 	case req.Mode.IsRegular():
-// 		n = &File{}
-// 	default:
-// 		return n, fuse.ENOSYS
-// 	}
-// 	n.(*Node).Mode = req.Mode
-// 	n.(*Node).Name = req.Name
-// 	d.Add(req.Name, n)
-// 	return
-// }
-
 func (d *Dir) Lookup(name string, intr fs.Intr) (fs fs.Node, err fuse.Error) {
 	d.rwmut.RLock()
 	fs, ok := d.Children[name]
